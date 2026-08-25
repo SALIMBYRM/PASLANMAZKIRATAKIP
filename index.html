@@ -60,6 +60,7 @@
         .tab-btn {
             padding: 10px 20px; border: none; background: #cbd5e1;
             cursor: pointer; border-radius: 6px; font-weight: 600;
+            user-select: none;
         }
         .tab-btn.active { background: var(--primary-color); color: white; }
 
@@ -104,7 +105,6 @@
         }
         .reminder-row.read { background: #f8fafc; color: #94a3b8; text-decoration: line-through; }
 
-        /* Yeni Temiz Düzen Panelleri */
         .panel-box {
             background: #f8fafc;
             border: 1px solid #cbd5e1;
@@ -163,6 +163,7 @@
         </div>
     </div>
 
+    <!-- Apartman Sekmeleri (Silmek için bir sekmeye 4 defa peş peşe tıklayın) -->
     <div class="tabs" id="apartmentTabs"></div>
 
     <div class="card">
@@ -223,6 +224,10 @@
     let activeUser = '';
     let currentApartment = 'Paslanmaz Apart';
     let selectedYear = '2026';
+
+    // Tıklama Sayıcı Değişkenleri
+    let aptClickCounts = {};
+    let aptClickTimers = {};
     
     const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 
@@ -285,6 +290,58 @@
     function handleLogout() {
         document.getElementById('mainAppContainer').style.display = 'none';
         document.getElementById('loginOverlay').style.display = 'flex';
+    }
+
+    function addNewApartment() {
+        const nameInput = document.getElementById('newApartmentNameInput');
+        const aptName = nameInput.value.trim();
+
+        if(!aptName) return alert('Lütfen bir apartman adı yazın!');
+        if(db[aptName]) return alert('Bu isimde bir apartman zaten var!');
+
+        db[aptName] = { rooms: [], expenses: [] };
+        currentApartment = aptName;
+        nameInput.value = '';
+        saveAndRender();
+        alert(`"${aptName}" başarıyla eklendi!`);
+    }
+
+    // Apartman Sekmesine Tıklama ve 4 Tık İle Silme Kontrolü
+    function handleApartmentTabClick(aptName) {
+        // Normal sekme değiştirme
+        switchApartment(aptName);
+
+        // Tıklama sayacı takibi
+        if (!aptClickCounts[aptName]) {
+            aptClickCounts[aptName] = 0;
+        }
+        aptClickCounts[aptName]++;
+
+        // Her tıklamada timer sıfırlanır (1.5 saniye içinde 4 tık atılmazsa sayacı sıfırlar)
+        clearTimeout(aptClickTimers[aptName]);
+        aptClickTimers[aptName] = setTimeout(() => {
+            aptClickCounts[aptName] = 0;
+        }, 1500);
+
+        // 4 defa üst üste tıklandıysa silme onayı iste
+        if (aptClickCounts[aptName] >= 4) {
+            aptClickCounts[aptName] = 0; // Sıfırla
+            deleteApartment(aptName);
+        }
+    }
+
+    function deleteApartment(aptName) {
+        if (Object.keys(db).length <= 1) {
+            alert('Sistemde en az 1 adet apartman bulunmalıdır, son kalan apartmanı silemezsiniz!');
+            return;
+        }
+
+        if (confirm(`⚠️ DİKKAT!\n\n"${aptName}" isimli apartmanı ve içerisindeki TÜM DAİRELER ile GİDERLERİ silmek istediğinize emin misiniz?`)) {
+            delete db[aptName];
+            currentApartment = Object.keys(db)[0];
+            saveAndRender();
+            alert(`"${aptName}" apartmanı başarıyla silindi.`);
+        }
     }
 
     function switchApartment(name) {
@@ -420,7 +477,8 @@
             const btn = document.createElement('button');
             btn.className = `tab-btn ${apt === currentApartment ? 'active' : ''}`;
             btn.innerText = apt;
-            btn.onclick = () => switchApartment(apt);
+            btn.title = 'Silmek için bu sekmeye peş peşe 4 kere tıklayın';
+            btn.onclick = () => handleApartmentTabClick(apt);
             container.appendChild(btn);
         }
     }
@@ -507,7 +565,6 @@
                 Daire: <b>${room.roomNumber}</b> | Kiracı: <b>${room.tenantName}</b> | Mevcut Kira: <b>${room.rentAmount.toLocaleString('tr-TR')} ₺</b> | Ödeme Günü: <b>Her ayın ${room.paymentDay}. günü</b>
             </div>
 
-            <!-- TABLO YILI SEÇİM PANELİ -->
             <div class="panel-box" style="background:#f0fdf4; border-color:#86efac;">
                 <div class="panel-title" style="color:#15803d;">📅 Tabloda Gösterilecek Yılı Seç:</div>
                 <select onchange="changeYearFilter(this.value)" style="width:100%; max-width:300px; font-weight:bold; padding:10px;">
@@ -515,7 +572,6 @@
                 </select>
             </div>
 
-            <!-- KİRACI DEĞİŞTİR PANELİ -->
             <div class="panel-box" style="background:#f0f9ff; border-color:#93c5fd;">
                 <div class="panel-title" style="color:#1d4ed8;">🔄 Kiracı Değiştir:</div>
                 <div class="form-group" style="margin-bottom:0;">
@@ -526,7 +582,6 @@
                 </div>
             </div>
 
-            <!-- KİRA ZAMMI PANELİ -->
             <div class="panel-box">
                 <div class="panel-title" style="color:#334155;">📈 Kira Zammı Uygula:</div>
                 <div class="form-group" style="margin-bottom:0;">
