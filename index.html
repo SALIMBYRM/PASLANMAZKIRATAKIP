@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PASLANMAZLAR KİRA VE GİDER TAKİP</title>
+    <!-- Supabase JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary-color: #1e3a8a;
@@ -266,24 +268,6 @@
             font-weight: normal;
             text-decoration: line-through;
         }
-        .summary-card {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 10px 15px;
-            text-align: center;
-            flex: 1;
-            min-width: 120px;
-        }
-        .summary-card small {
-            color: #64748b;
-            display: block;
-            font-size: 0.75rem;
-        }
-        .summary-card span {
-            font-weight: bold;
-            font-size: 1.1rem;
-        }
     </style>
 </head>
 <body>
@@ -414,6 +398,11 @@
 </div>
 
 <script>
+    // SUPABASE İLE İLETİŞİM AYARLARI
+    const SUPABASE_URL = "YOUR_SUPABASE_URL";
+    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     let activeUser = '';
     let currentApartment = 'Paslanmaz Apart';
     
@@ -507,26 +496,47 @@
         }
     };
 
-    let db = JSON.parse(localStorage.getItem('paslanmazApartmentDataV18')) || initialDefaultData;
-    let readReminders = JSON.parse(localStorage.getItem('paslanmazReadRemindersV18')) || [];
-    let selectedYearsState = {};
+    let db = initialDefaultData;
+    let readReminders = [];
 
-    for(let apt in db) {
-        if(!db[apt].rooms) db[apt].rooms = [];
-        if(!db[apt].expenses) db[apt].expenses = [];
-
-        db[apt].rooms.forEach(room => {
-            if(!room.monthsData) {
-                room.monthsData = generateAllMonthsList(room.rentAmount, room.tenantName);
+    // Supabase Verilerini Yükleme
+    async function loadSupabaseData() {
+        try {
+            const { data: aptData } = await _supabase.from('apartment_data').select('data').eq('id', 'main').single();
+            if (aptData && aptData.data && Object.keys(aptData.data).length > 0) {
+                db = aptData.data;
+            } else {
+                await _supabase.from('apartment_data').upsert({ id: 'main', data: initialDefaultData });
             }
-        });
+
+            const { data: remData } = await _supabase.from('read_reminders').select('data').eq('id', 'main').single();
+            if (remData && remData.data) {
+                readReminders = remData.data;
+            }
+
+            for(let apt in db) {
+                if(!db[apt].rooms) db[apt].rooms = [];
+                if(!db[apt].expenses) db[apt].expenses = [];
+
+                db[apt].rooms.forEach(room => {
+                    if(!room.monthsData) {
+                        room.monthsData = generateAllMonthsList(room.rentAmount, room.tenantName);
+                    }
+                });
+            }
+
+            if(!db[currentApartment]) {
+                currentApartment = Object.keys(db)[0] || 'Paslanmaz Apart';
+            }
+
+            checkReminders();
+            updateAllViews();
+        } catch (error) {
+            console.error('Supabase yükleme hatası:', error);
+        }
     }
 
-    if(!db[currentApartment]) {
-        currentApartment = Object.keys(db)[0] || 'Paslanmaz Apart';
-    }
-
-    function handleLogin() {
+    async function handleLogin() {
         const user = document.getElementById('loginUser').value;
         const pass = document.getElementById('loginPassword').value;
         const errorDiv = document.getElementById('loginError');
@@ -537,8 +547,7 @@
             document.getElementById('loginOverlay').style.display = 'none';
             document.getElementById('mainAppContainer').style.display = 'block';
             errorDiv.style.display = 'none';
-            checkReminders();
-            updateAllViews();
+            await loadSupabaseData();
         } else {
             errorDiv.style.display = 'block';
         }
@@ -788,18 +797,18 @@
         saveAndRender();
     }
 
-    function toggleReminder(reminderId) {
+    async function toggleReminder(reminderId) {
         if(readReminders.includes(reminderId)) {
             readReminders = readReminders.filter(id => id !== reminderId);
         } else {
             readReminders.push(reminderId);
         }
-        localStorage.setItem('paslanmazReadRemindersV18', JSON.stringify(readReminders));
+        await _supabase.from('read_reminders').upsert({ id: 'main', data: readReminders });
         checkReminders();
     }
 
-    function saveAndRender(refreshDropdown = true) {
-        localStorage.setItem('paslanmazApartmentDataV18', JSON.stringify(db));
+    async function saveAndRender(refreshDropdown = true) {
+        await _supabase.from('apartment_data').upsert({ id: 'main', data: db });
         checkReminders();
         if(refreshDropdown) {
             updateAllViews();
@@ -922,11 +931,6 @@
         renderTenantDetails();
     }
 
-    function onYearChange(roomId, selectedYear) {
-        selectedYearsState[roomId] = selectedYear;
-        renderTenantDetails();
-    }
-
     function renderTenantDetails() {
         const container = document.getElementById('tenantDetailContainer');
         const selectElem = document.getElementById('selectedTenantSelect');
@@ -941,28 +945,6 @@
 
         let allKeys = Object.keys(room.monthsData);
 
-        let availableYears = [];
-        allKeys.forEach(k => {
-            let parts = k.split(' ');
-            if(parts.length === 2) {
-                let yr = parts[1];
-                if(!availableYears.includes(yr)) availableYears.push(yr);
-            }
-        });
-        availableYears.sort();
-
-        let currentSelectedYear = selectedYearsState[room.id] || (availableYears.includes('2026') ? '2026' : availableYears[0]);
-        if(!availableYears.includes(currentSelectedYear) && availableYears.length > 0) {
-            currentSelectedYear = availableYears[0];
-        }
-
-        let filteredKeys = allKeys.filter(k => k.includes(currentSelectedYear));
-
-        let yearOptionsHtml = '';
-        availableYears.forEach(y => {
-            yearOptionsHtml += `<option value="${y}" ${y === currentSelectedYear ? 'selected' : ''}>${y} Yılı</option>`;
-        });
-
         let optionsHtml = '';
         allKeys.forEach(k => {
             optionsHtml += `<option value="${k}">${k}</option>`;
@@ -973,20 +955,8 @@
             monthSelectOptions += `<option value="${m}">${m}</option>`;
         });
 
-        let totalPaid = 0;
-        let totalUnpaid = 0;
-
-        filteredKeys.forEach(k => {
-            const item = room.monthsData[k];
-            if(item.paid) {
-                totalPaid += Number(item.amount);
-            } else {
-                totalUnpaid += Number(item.amount);
-            }
-        });
-
         let tableRowsHtml = '';
-        filteredKeys.forEach(k => {
+        allKeys.forEach(k => {
             const item = room.monthsData[k];
             const isPaid = item.paid;
 
@@ -1008,33 +978,9 @@
         });
 
         let tableHtml = `
-            <div style="margin-bottom: 15px; display:flex; flex-direction:column; gap:10px;">
-                <div style="background: #f8fafc; padding: 12px; border-radius: 6px; font-size: 0.9rem; line-height: 1.5; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                    <div>
-                        Daire: <b>${room.roomNumber}</b> | Mevcut Kiracı: <b>${room.tenantName}</b><br>
-                        Mevcut Kira: <b>${Number(room.rentAmount).toLocaleString('tr-TR')} ₺</b> | Ödeme Günü: <b>Her ayın ${room.paymentDay}. günü</b>
-                    </div>
-                    <div>
-                        <select onchange="onYearChange(${room.id}, this.value)" style="padding: 6px 12px; font-weight: bold; background: white;">
-                            ${yearOptionsHtml}
-                        </select>
-                    </div>
-                </div>
-
-                <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <div class="summary-card">
-                        <small>${currentSelectedYear} Toplam Alınan</small>
-                        <span style="color: var(--success-color);">${totalPaid.toLocaleString('tr-TR')} ₺</span>
-                    </div>
-                    <div class="summary-card">
-                        <small>${currentSelectedYear} Kalan Bekleyen</small>
-                        <span style="color: #dc2626;">${totalUnpaid.toLocaleString('tr-TR')} ₺</span>
-                    </div>
-                    <div class="summary-card">
-                        <small>${currentSelectedYear} Toplam Hedef</small>
-                        <span style="color: var(--primary-color);">${(totalPaid + totalUnpaid).toLocaleString('tr-TR')} ₺</span>
-                    </div>
-                </div>
+            <div style="margin-bottom: 15px; background: #f8fafc; padding: 12px; border-radius: 6px; font-size: 0.9rem; line-height: 1.5;">
+                Daire: <b>${room.roomNumber}</b> | Mevcut Kiracı: <b>${room.tenantName}</b><br>
+                Mevcut Kira: <b>${Number(room.rentAmount).toLocaleString('tr-TR')} ₺</b> | Ödeme Günü: <b>Her ayın ${room.paymentDay}. günü</b>
             </div>
 
             <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; background: #fff; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px;">
@@ -1080,7 +1026,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    ${tableRowsHtml || '<tr><td colspan="7" style="text-align:center;">Bu yıla ait veri bulunamadı.</td></tr>'}
+                    ${tableRowsHtml}
                 </tbody>
             </table>
         `;
