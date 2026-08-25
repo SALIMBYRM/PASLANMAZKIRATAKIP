@@ -906,7 +906,7 @@
         const currentSelectedVal = selectElem.value;
         selectElem.innerHTML = '';
 
-        const rooms = db[currentApartment].rooms;
+        const rooms = db[currentApartment] ? db[currentApartment].rooms : [];
 
         if(rooms.length === 0) {
             selectElem.innerHTML = `<option value="">Kayıtlı daire bulunmuyor</option>`;
@@ -936,7 +936,8 @@
         const selectElem = document.getElementById('selectedTenantSelect');
         const selectedId = Number(selectElem.value);
 
-        const room = db[currentApartment].rooms.find(r => r.id === selectedId);
+        const rooms = db[currentApartment] ? db[currentApartment].rooms : [];
+        const room = rooms.find(r => r.id === selectedId);
 
         if(!room) {
             container.innerHTML = `<p style="text-align:center; color:#64748b;">Lütfen kontrol etmek için yukarıdan bir kiracı seçin.</p>`;
@@ -1038,7 +1039,7 @@
         const tbody = document.getElementById('expenseTableBody');
         tbody.innerHTML = '';
 
-        const expenses = db[currentApartment].expenses || [];
+        const expenses = (db[currentApartment] && db[currentApartment].expenses) ? db[currentApartment].expenses : [];
 
         if(expenses.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#64748b;">Bu apartmana ait kayıtlı gider bulunmamaktadır.</td></tr>`;
