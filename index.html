@@ -282,9 +282,9 @@
             <option value="Mahmut">Mahmut</option>
         </select>
         
-        <input type="password" id="loginPassword" placeholder="Şifre">
+        <input type="password" id="loginPassword" placeholder="Şifre" onkeypress="if(event.key === 'Enter') handleLogin()">
         
-        <button class="login-btn" onclick="handleLogin()">Giriş Yap</button>
+        <button class="login-btn" type="button" id="submitLoginBtn" onclick="handleLogin()">Giriş Yap</button>
         <div id="loginError" class="login-error">Hatalı şifre! Lütfen tekrar deneyin.</div>
     </div>
 </div>
@@ -381,14 +381,20 @@
 </div>
 
 <script>
-    // Supabase Bağlantı Ayarları
     const SUPABASE_URL = "https://bqdgmylhkfpgbcjmnrdw.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_sinZ4Aw33HQnOSVyRSGdFA_gwdSyy9j";
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let supabaseClient = null;
+
+    function getSupabase() {
+        if (!supabaseClient && window.supabase) {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+        return supabaseClient;
+    }
 
     let activeUser = '';
     let currentApartment = 'Paslanmaz Apart';
-    const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylul', 'Ekim', 'Kasım', 'Aralık'];
 
     function generateAllMonthsList(baseRent, tenantName) {
         let list = {};
@@ -482,10 +488,12 @@
     let readReminders = [];
     let selectedYearsState = {};
 
-    // Buluttan Veri Çekme Fonksiyonu
     async function loadCloudData() {
+        const sb = getSupabase();
+        if(!sb) return;
+
         try {
-            const { data, error } = await supabase
+            const { data } = await sb
                 .from('paslanmaz_data')
                 .select('content')
                 .eq('id', 'main_data')
@@ -497,7 +505,7 @@
                 await saveCloudData();
             }
 
-            const { data: remData } = await supabase
+            const { data: remData } = await sb
                 .from('paslanmaz_data')
                 .select('content')
                 .eq('id', 'reminders_data')
@@ -511,16 +519,18 @@
             checkReminders();
             updateAllViews();
         } catch (err) {
-            console.error("Bulut veri yukleme hatasi:", err);
+            console.error("Bulut yukleme hatasi:", err);
             validateDbStructure();
             updateAllViews();
         }
     }
 
-    // Buluta Veri Yazma Fonksiyonu
     async function saveCloudData() {
+        const sb = getSupabase();
+        if(!sb) return;
+
         try {
-            await supabase
+            await sb
                 .from('paslanmaz_data')
                 .upsert({ id: 'main_data', content: db });
         } catch (err) {
@@ -529,8 +539,11 @@
     }
 
     async function saveRemindersData() {
+        const sb = getSupabase();
+        if(!sb) return;
+
         try {
-            await supabase
+            await sb
                 .from('paslanmaz_data')
                 .upsert({ id: 'reminders_data', content: readReminders });
         } catch (err) {
