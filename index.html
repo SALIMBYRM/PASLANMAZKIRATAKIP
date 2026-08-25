@@ -225,20 +225,28 @@
     let currentApartment = 'Paslanmaz Apart';
     let selectedYear = '2026';
 
-    // Tıklama Sayıcı Değişkenleri
     let aptClickCounts = {};
     let aptClickTimers = {};
     
     const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 
-    function generateAllMonthsList(baseRent, tenantName) {
-        let list = {};
+    // Ayların Kronolojik Sırayla Üretilmesi
+    function generateChronologicalMonthKeys() {
+        let keys = [];
         for(let y = 2026; y <= 2030; y++) {
             for(let m = 0; m < 12; m++) {
-                let key = `${monthNames[m]} ${y}`;
-                list[key] = { tenant: tenantName, amount: baseRent, paid: false, note: '', by: '-' };
+                keys.push(`${monthNames[m]} ${y}`);
             }
         }
+        return keys;
+    }
+
+    function generateAllMonthsList(baseRent, tenantName) {
+        let list = {};
+        const keys = generateChronologicalMonthKeys();
+        keys.forEach(key => {
+            list[key] = { tenant: tenantName, amount: baseRent, paid: false, note: '', by: '-' };
+        });
         return list;
     }
 
@@ -306,26 +314,21 @@
         alert(`"${aptName}" başarıyla eklendi!`);
     }
 
-    // Apartman Sekmesine Tıklama ve 4 Tık İle Silme Kontrolü
     function handleApartmentTabClick(aptName) {
-        // Normal sekme değiştirme
         switchApartment(aptName);
 
-        // Tıklama sayacı takibi
         if (!aptClickCounts[aptName]) {
             aptClickCounts[aptName] = 0;
         }
         aptClickCounts[aptName]++;
 
-        // Her tıklamada timer sıfırlanır (1.5 saniye içinde 4 tık atılmazsa sayacı sıfırlar)
         clearTimeout(aptClickTimers[aptName]);
         aptClickTimers[aptName] = setTimeout(() => {
             aptClickCounts[aptName] = 0;
         }, 1500);
 
-        // 4 defa üst üste tıklandıysa silme onayı iste
         if (aptClickCounts[aptName] >= 4) {
-            aptClickCounts[aptName] = 0; // Sıfırla
+            aptClickCounts[aptName] = 0;
             deleteApartment(aptName);
         }
     }
@@ -395,10 +398,13 @@
 
         const room = db[currentApartment].rooms.find(r => r.id === roomId);
         let apply = false;
-        Object.keys(room.monthsData).forEach(k => {
+        
+        const allKeys = generateChronologicalMonthKeys();
+        allKeys.forEach(k => {
             if(k === startMonthKey) apply = true;
-            if(apply) room.monthsData[k].amount = newAmount;
+            if(apply && room.monthsData[k]) room.monthsData[k].amount = newAmount;
         });
+
         room.rentAmount = newAmount;
         saveAndRender();
         alert('Kira zammı başarıyla uygulandı!');
@@ -413,9 +419,11 @@
 
         const room = db[currentApartment].rooms.find(r => r.id === roomId);
         let apply = false;
-        Object.keys(room.monthsData).forEach(k => {
+
+        const allKeys = generateChronologicalMonthKeys();
+        allKeys.forEach(k => {
             if(k === startMonthKey) apply = true;
-            if(apply) {
+            if(apply && room.monthsData[k]) {
                 room.monthsData[k].tenant = newTenant;
                 room.monthsData[k].amount = newAmount;
                 room.monthsData[k].paid = false;
@@ -423,6 +431,7 @@
                 room.monthsData[k].by = '-';
             }
         });
+
         room.tenantName = newTenant;
         room.rentAmount = newAmount;
         saveAndRender();
@@ -535,13 +544,16 @@
 
         if(!room) return;
 
-        let allKeys = Object.keys(room.monthsData);
-        let yearFilteredKeys = allKeys.filter(k => k.endsWith(selectedYear));
+        // Ayları takvim sırasına göre al
+        const allChronologicalKeys = generateChronologicalMonthKeys();
+        
+        // Sadece seçili yıla ait ayları takvim sırasıyla filtrele
+        let yearFilteredKeys = allChronologicalKeys.filter(k => k.endsWith(selectedYear));
 
-        let monthOptions = allKeys.map(k => `<option value="${k}">${k}</option>`).join('');
+        let monthOptions = allChronologicalKeys.map(k => `<option value="${k}">${k}</option>`).join('');
 
         let tableRowsHtml = yearFilteredKeys.map(k => {
-            const item = room.monthsData[k];
+            const item = room.monthsData[k] || { tenant: room.tenantName, amount: room.rentAmount, paid: false, note: '', by: '-' };
             return `
                 <tr>
                     <td><b>${k}</b></td>
