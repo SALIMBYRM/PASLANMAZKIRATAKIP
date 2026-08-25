@@ -72,12 +72,13 @@
 
         input, select {
             padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;
-            flex: 1; min-width: 120px;
+            flex: 1; min-width: 140px;
         }
 
         button.btn {
             background: var(--success-color); color: white; border: none;
-            padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: 600;
+            padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600;
+            white-space: nowrap;
         }
 
         button.btn-danger {
@@ -103,12 +104,22 @@
         }
         .reminder-row.read { background: #f8fafc; color: #94a3b8; text-decoration: line-through; }
 
-        /* İşlem Paneli Kutuları */
-        .action-card {
-            background: #fff; padding: 12px; border: 1px solid #e2e8f0;
-            border-radius: 8px; flex: 1; min-width: 250px;
+        /* Yeni Temiz Düzen Panelleri */
+        .panel-box {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
         }
-        .action-card h4 { margin: 0 0 8px 0; color: #334155; font-size: 0.9rem; }
+        .panel-title {
+            font-weight: bold;
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
     </style>
 </head>
 <body>
@@ -211,7 +222,7 @@
 
     let activeUser = '';
     let currentApartment = 'Paslanmaz Apart';
-    let selectedYear = '2026'; // Varsayılan Seçili Yıl
+    let selectedYear = '2026';
     
     const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 
@@ -323,7 +334,7 @@
     function applyRentIncrease(roomId) {
         const newAmount = Number(document.getElementById(`newRentAmount_${roomId}`).value);
         const startMonthKey = document.getElementById(`startRentMonth_${roomId}`).value;
-        if(!newAmount) return alert('Tutar girin!');
+        if(!newAmount) return alert('Geçerli tutar girin!');
 
         const room = db[currentApartment].rooms.find(r => r.id === roomId);
         let apply = false;
@@ -333,7 +344,7 @@
         });
         room.rentAmount = newAmount;
         saveAndRender();
-        alert('Zam uygulandı!');
+        alert('Kira zammı başarıyla uygulandı!');
     }
 
     function changeTenant(roomId) {
@@ -341,7 +352,7 @@
         const newAmount = Number(document.getElementById(`newTenantAmount_${roomId}`).value);
         const startMonthKey = document.getElementById(`startTenantMonth_${roomId}`).value;
 
-        if(!newTenant || !newAmount) return alert('Yeni Kiracı Adı ve Tutarı girin!');
+        if(!newTenant || !newAmount) return alert('Lütfen Yeni Kiracı Adı ve Tutarı eksiksiz girin!');
 
         const room = db[currentApartment].rooms.find(r => r.id === roomId);
         let apply = false;
@@ -492,38 +503,40 @@
         let yearOptions = ['2026', '2027', '2028', '2029', '2030'].map(y => `<option value="${y}" ${y === selectedYear ? 'selected' : ''}>${y} Yılı</option>`).join('');
 
         container.innerHTML = `
-            <div style="background:#f8fafc; padding:12px; border-radius:6px; margin-bottom:15px;">
-                Daire: <b>${room.roomNumber}</b> | Kiracı: <b>${room.tenantName}</b> | Tutar: <b>${room.rentAmount.toLocaleString('tr-TR')} ₺</b> | Gün: <b>Her ayın ${room.paymentDay}. günü</b>
+            <div style="background:#e0f2fe; padding:12px; border-radius:6px; margin-bottom:15px; color:#0369a1;">
+                Daire: <b>${room.roomNumber}</b> | Kiracı: <b>${room.tenantName}</b> | Mevcut Kira: <b>${room.rentAmount.toLocaleString('tr-TR')} ₺</b> | Ödeme Günü: <b>Her ayın ${room.paymentDay}. günü</b>
             </div>
 
-            <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
-                <div class="action-card">
-                    <h4>📈 Kira Zammı Uygula</h4>
-                    <div style="display:flex; gap:5px;">
-                        <select id="startRentMonth_${room.id}">${monthOptions}</select>
-                        <input type="number" id="newRentAmount_${room.id}" placeholder="Tutar" style="width:70px;">
-                        <button class="btn" onclick="applyRentIncrease(${room.id})">Uygula</button>
-                    </div>
-                </div>
+            <!-- TABLO YILI SEÇİM PANELİ -->
+            <div class="panel-box" style="background:#f0fdf4; border-color:#86efac;">
+                <div class="panel-title" style="color:#15803d;">📅 Tabloda Gösterilecek Yılı Seç:</div>
+                <select onchange="changeYearFilter(this.value)" style="width:100%; max-width:300px; font-weight:bold; padding:10px;">
+                    ${yearOptions}
+                </select>
+            </div>
 
-                <div class="action-card" style="border-color:#3b82f6;">
-                    <h4 style="color:#1d4ed8;">🔄 Kiracı Değiştir</h4>
-                    <div style="display:flex; gap:5px;">
-                        <select id="startTenantMonth_${room.id}">${monthOptions}</select>
-                        <input type="text" id="newTenantName_${room.id}" placeholder="Yeni Ad" style="width:80px;">
-                        <input type="number" id="newTenantAmount_${room.id}" placeholder="Tutar" style="width:60px;">
-                        <button class="btn" onclick="changeTenant(${room.id})" style="background:#0284c7;">Ata</button>
-                    </div>
-                </div>
-
-                <div class="action-card" style="background:#f0fdf4;">
-                    <h4 style="color:#15803d;">📅 Gösterilecek Yılı Seç</h4>
-                    <select onchange="changeYearFilter(this.value)" style="width:100%; font-weight:bold;">
-                        ${yearOptions}
-                    </select>
+            <!-- KİRACI DEĞİŞTİR PANELİ -->
+            <div class="panel-box" style="background:#f0f9ff; border-color:#93c5fd;">
+                <div class="panel-title" style="color:#1d4ed8;">🔄 Kiracı Değiştir:</div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <select id="startTenantMonth_${room.id}" style="max-width:180px;">${monthOptions}</select>
+                    <input type="text" id="newTenantName_${room.id}" placeholder="Yeni Kiracı Ad Soyad">
+                    <input type="number" id="newTenantAmount_${room.id}" placeholder="Yeni Kira Tutarı (TL)">
+                    <button class="btn" onclick="changeTenant(${room.id})" style="background:#0284c7;">Kiracıyı Değiştir</button>
                 </div>
             </div>
 
+            <!-- KİRA ZAMMI PANELİ -->
+            <div class="panel-box">
+                <div class="panel-title" style="color:#334155;">📈 Kira Zammı Uygula:</div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <select id="startRentMonth_${room.id}" style="max-width:180px;">${monthOptions}</select>
+                    <input type="number" id="newRentAmount_${room.id}" placeholder="Yeni Zamlı Tutar (TL)">
+                    <button class="btn" onclick="applyRentIncrease(${room.id})">Zammı Uygula</button>
+                </div>
+            </div>
+
+            <h4 style="margin-top:20px; color:#1e293b;">📋 ${selectedYear} Yılı Aylık Kira Tablosu</h4>
             <table>
                 <thead>
                     <tr>
