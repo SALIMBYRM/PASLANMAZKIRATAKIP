@@ -52,8 +52,17 @@
 
         header {
             display: flex; justify-content: space-between; align-items: center;
-            background: var(--card-bg); padding: 20px; border-radius: 10px;
+            background: var(--card-bg); padding: 15px 20px; border-radius: 10px;
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); margin-bottom: 20px;
+        }
+
+        .header-logo-container {
+            display: flex; align-items: center; gap: 15px;
+        }
+
+        /* SVG Logo Stilleri */
+        .logo-box {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
 
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
@@ -130,9 +139,25 @@
 <!-- GİRİŞ EKRANI -->
 <div id="loginOverlay">
     <div class="login-card">
-        <div style="font-size: 3rem; margin-bottom: 10px;">🏢</div>
-        <h2>PASLANMAZLAR</h2>
-        <p>Kira Takip Sistemine Giriş</p>
+        <!-- PASLANMAZ GRUP LOGOSU (Giriş Ekranı) -->
+        <div class="logo-box" style="margin-bottom: 15px;">
+            <svg width="120" height="90" viewBox="0 0 200 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Arka Yaylar -->
+                <path d="M 45 105 C 20 65, 55 25, 115 25" stroke="#003B7A" stroke-width="8" stroke-linecap="round"/>
+                <path d="M 40 115 C 30 135, 115 145, 160 85" stroke="#5A5B60" stroke-width="8" stroke-linecap="round"/>
+                <!-- P Harfi -->
+                <path d="M 85 40 L 125 40 C 145 40, 145 75, 125 75 L 105 75 L 105 110 L 85 110 Z" fill="#003B7A"/>
+                <path d="M 105 53 L 122 53 C 132 53, 132 63, 122 63 L 105 63 Z" fill="white"/>
+            </svg>
+            <div style="font-family: 'Times New Roman', serif; font-size: 22px; font-weight: bold; letter-spacing: 2px; color: #3A3B3E; margin-top: 5px; border-top: 1px solid #5A5B60; border-bottom: 1px solid #5A5B60; padding: 2px 10px;">
+                PASLANMAZ
+            </div>
+            <div style="font-family: 'Times New Roman', serif; font-size: 14px; letter-spacing: 12px; color: #5A5B60; margin-top: 4px; padding-left: 10px;">
+                GRUP
+            </div>
+        </div>
+        
+        <p style="color: #64748b; margin-bottom: 20px;">Kira Takip Sistemine Giriş</p>
         <select id="loginUser">
             <option value="Rabia">Rabia</option>
             <option value="Salim">Salim</option>
@@ -147,8 +172,19 @@
 <!-- ANA UYGULAMA -->
 <div class="container" id="mainAppContainer">
     <header>
-        <div>
-            <h2 style="margin: 0; color: var(--primary-color);">🏢 PASLANMAZLAR KİRA & GİDER TAKİP</h2>
+        <div class="header-logo-container">
+            <!-- PASLANMAZ GRUP LOGOSU (Header/Üst Başlık) -->
+            <div class="logo-box" style="transform: scale(0.65); transform-origin: left center; margin-right: -40px;">
+                <svg width="160" height="90" viewBox="0 0 200 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M 45 105 C 20 65, 55 25, 115 25" stroke="#003B7A" stroke-width="8" stroke-linecap="round"/>
+                    <path d="M 40 115 C 30 135, 115 145, 160 85" stroke="#5A5B60" stroke-width="8" stroke-linecap="round"/>
+                    <path d="M 85 40 L 125 40 C 145 40, 145 75, 125 75 L 105 75 L 105 110 L 85 110 Z" fill="#003B7A"/>
+                    <path d="M 105 53 L 122 53 C 132 53, 132 63, 122 63 L 105 63 Z" fill="white"/>
+                </svg>
+            </div>
+            <div>
+                <h2 style="margin: 0; color: var(--primary-color); font-size: 1.5rem;">KİRA & GİDER TAKİP SİSTEMİ</h2>
+            </div>
         </div>
         <div>
             <span>Kullanıcı: <b id="displayUser" style="color: var(--primary-color);"></b></span>
@@ -494,7 +530,6 @@
             
             btn.onclick = () => handleApartmentTabClick(apt);
 
-            // Sürükle ve Bırak (Drag & Drop) Olayları
             btn.addEventListener('dragstart', (e) => {
                 draggedApt = apt;
                 btn.classList.add('dragging');
@@ -520,7 +555,6 @@
         }
     }
 
-    // Apartman Nesne Sıralamasını Güncelleme
     function reorderApartments(draggedKey, targetKey) {
         const newDb = {};
         const keys = Object.keys(db);
