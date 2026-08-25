@@ -282,9 +282,9 @@
             <option value="Mahmut">Mahmut</option>
         </select>
         
-        <input type="password" id="loginPassword" placeholder="Şifre" onkeypress="if(event.key === 'Enter') handleLogin()">
+        <input type="password" id="loginPassword" placeholder="Şifre">
         
-        <button class="login-btn" type="button" id="submitLoginBtn" onclick="handleLogin()">Giriş Yap</button>
+        <button class="login-btn" type="button" id="submitLoginBtn">Giriş Yap</button>
         <div id="loginError" class="login-error">Hatalı şifre! Lütfen tekrar deneyin.</div>
     </div>
 </div>
@@ -386,8 +386,12 @@
     let supabaseClient = null;
 
     function getSupabase() {
-        if (!supabaseClient && window.supabase) {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        try {
+            if (!supabaseClient && window.supabase && window.supabase.createClient) {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+        } catch(e) {
+            console.warn("Supabase başlatılamadı, varsayılan veri kullanılacak.", e);
         }
         return supabaseClient;
     }
@@ -488,6 +492,51 @@
     let readReminders = [];
     let selectedYearsState = {};
 
+    // GİRİŞ DÜĞMESİ İÇİN DÜZ EVENT LISTENER
+    document.addEventListener('DOMContentLoaded', function() {
+        const btn = document.getElementById('submitLoginBtn');
+        const passInput = document.getElementById('loginPassword');
+
+        if(btn) {
+            btn.addEventListener('click', processLogin);
+        }
+        if(passInput) {
+            passInput.addEventListener('keypress', function(e) {
+                if(e.key === 'Enter') {
+                    processLogin();
+                }
+            });
+        }
+    });
+
+    async function processLogin() {
+        const userSelect = document.getElementById('loginUser');
+        const passInput = document.getElementById('loginPassword');
+        const errorDiv = document.getElementById('loginError');
+
+        const user = userSelect.value;
+        const pass = passInput.value.trim();
+
+        if(pass === '345034') {
+            activeUser = user;
+            document.getElementById('displayUser').innerText = user;
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('mainAppContainer').style.display = 'block';
+            errorDiv.style.display = 'none';
+
+            // Önce arayüzü çakılmadan hemen çizdiriyoruz
+            validateDbStructure();
+            updateAllViews();
+
+            // Bulut verilerini arka planda eşitliyoruz
+            setTimeout(() => {
+                loadCloudData();
+            }, 100);
+        } else {
+            errorDiv.style.display = 'block';
+        }
+    }
+
     async function loadCloudData() {
         const sb = getSupabase();
         if(!sb) return;
@@ -564,23 +613,6 @@
         }
         if(!db[currentApartment]) {
             currentApartment = Object.keys(db)[0] || 'Paslanmaz Apart';
-        }
-    }
-
-    async function handleLogin() {
-        const user = document.getElementById('loginUser').value;
-        const pass = document.getElementById('loginPassword').value;
-        const errorDiv = document.getElementById('loginError');
-
-        if(pass === '345034') {
-            activeUser = user;
-            document.getElementById('displayUser').innerText = user;
-            document.getElementById('loginOverlay').style.display = 'none';
-            document.getElementById('mainAppContainer').style.display = 'block';
-            errorDiv.style.display = 'none';
-            await loadCloudData();
-        } else {
-            errorDiv.style.display = 'block';
         }
     }
 
