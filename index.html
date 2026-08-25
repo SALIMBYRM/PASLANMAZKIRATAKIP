@@ -1,3 +1,6 @@
+
+
+
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -23,6 +26,7 @@
             padding: 20px;
         }
 
+        /* Giriş Ekranı Stilleri (Şifreli) */
         #loginOverlay {
             position: fixed;
             top: 0;
@@ -83,6 +87,7 @@
             display: none;
         }
 
+        /* Ana Uygulama Stilleri */
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -228,6 +233,7 @@
             border-radius: 4px;
         }
 
+        /* Hatırlatıcı Uyarı Kutuları */
         .alert-box {
             background: #fffbeb;
             border-left: 4px solid #f59e0b;
@@ -265,14 +271,6 @@
             font-weight: normal;
             text-decoration: line-through;
         }
-        
-        .sync-badge {
-            font-size: 0.75rem;
-            padding: 4px 8px;
-            border-radius: 4px;
-            background: #dcfce7;
-            color: #166534;
-        }
     </style>
 </head>
 <body>
@@ -304,7 +302,7 @@
             <div class="logo-icon">🏢</div>
             <div>
                 <h2 style="margin: 0; color: var(--primary-color);">PASLANMAZLAR KİRA & GİDER TAKİP</h2>
-                <small style="color: #64748b;">Apartman Yönetim Sistemi <span class="sync-badge" id="syncStatus">☁️ Bulut Aktif</span></small>
+                <small style="color: #64748b;">Apartman Yönetim Sistemi</small>
             </div>
         </div>
         <div class="user-info">
@@ -313,8 +311,10 @@
         </div>
     </header>
 
+    <!-- Hatırlatıcılar Alanı -->
     <div id="reminderContainer"></div>
 
+    <!-- Yeni Apartman Ekleme Paneli -->
     <div class="card" style="background: #f8fafc; border: 1px dashed #cbd5e1;">
         <h3 style="margin-top:0;">➕ Yeni Apartman Ekle</h3>
         <div class="form-group" style="margin-bottom:0;">
@@ -323,8 +323,12 @@
         </div>
     </div>
 
-    <div class="tabs" id="apartmentTabs"></div>
+    <!-- Apartman Sekmeleri -->
+    <div class="tabs" id="apartmentTabs">
+        <!-- Dinamik Oluşturulur -->
+    </div>
 
+    <!-- Daire Ekleme Bölümü -->
     <div class="card">
         <h3>🚪 Yeni Daire Ekle (<span id="activeApartmentTitle">Paslanmaz Apart</span>)</h3>
         <div class="form-group">
@@ -353,17 +357,23 @@
         </div>
     </div>
 
+    <!-- Kiracı Seçimi ve Aylık Tablo -->
     <div class="card">
         <h3>🔍 Kiracı Seçimi ve Aylık Kira Durumu</h3>
         <div class="form-group" style="align-items: center; background: #f8fafc; padding: 15px; border-radius: 8px;">
             <label for="selectedTenantSelect" style="font-weight: bold; min-width: 90px;">Kiracı Seç:</label>
-            <select id="selectedTenantSelect" onchange="renderTenantDetails()"></select>
+            <select id="selectedTenantSelect" onchange="renderTenantDetails()">
+                <!-- Dinamik -->
+            </select>
             <button class="btn-danger" id="deleteTenantBtn" onclick="deleteSelectedRoom()" style="padding: 10px 15px;">Seçili Daireyi Sil</button>
         </div>
 
-        <div id="tenantDetailContainer" style="margin-top: 15px;"></div>
+        <div id="tenantDetailContainer" style="margin-top: 15px;">
+            <!-- Dinamik -->
+        </div>
     </div>
 
+    <!-- APARTMAN GİDERLERİ BÖLÜMÜ -->
     <div class="card">
         <h3>💸 Apartman Giderleri Takip (<span id="activeApartmentExpenseTitle">Paslanmaz Apart</span>)</h3>
         <div class="form-group">
@@ -383,74 +393,124 @@
                     <th>İşlem</th>
                 </tr>
             </thead>
-            <tbody id="expenseTableBody"></tbody>
+            <tbody id="expenseTableBody">
+                <!-- Dinamik -->
+            </tbody>
         </table>
     </div>
 </div>
 
 <script>
-    // Supabase Bağlantısı
-    const SUPABASE_URL = 'https://bqdgmylhkfpgbcjmnrdw.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_sinZ4Aw33HQnOSVyRSGdFA_gwdSy...'; // Görselinizdeki Publishable Key buraya eklendi
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
     let activeUser = '';
     let currentApartment = 'Paslanmaz Apart';
+    
     const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 
     function generateAllMonthsList(baseRent, tenantName) {
         let list = {};
-        for(let y = 2026; y <= 2030; y++) {
+        const startYear = 2026;
+        const endYear = 2030;
+        
+        for(let y = startYear; y <= endYear; y++) {
             for(let m = 0; m < 12; m++) {
                 let key = `${monthNames[m]} ${y}`;
-                list[key] = { tenant: tenantName, amount: baseRent, paid: false, note: '', by: '-' };
+                list[key] = {
+                    tenant: tenantName,
+                    amount: baseRent,
+                    paid: false,
+                    note: '',
+                    by: '-'
+                };
             }
         }
         return list;
     }
 
-    let db = {};
+    const initialDefaultData = {
+        'Paslanmaz Apart': {
+            rooms: [
+                {
+                    id: 101,
+                    roomNumber: 'Daire 1',
+                    tenantName: 'Mehmet Emin Oğuz',
+                    rentAmount: 7000,
+                    startDate: '2025-08-24',
+                    paymentDay: '24',
+                    monthsData: generateAllMonthsList(7000, 'Mehmet Emin Oğuz')
+                },
+                {
+                    id: 102,
+                    roomNumber: 'Daire 2',
+                    tenantName: 'Hasan Çelik',
+                    rentAmount: 7200,
+                    startDate: '2025-05-10',
+                    paymentDay: '10',
+                    monthsData: generateAllMonthsList(7200, 'Hasan Çelik')
+                }
+            ],
+            expenses: []
+        },
+        'Uğur Apart': {
+            rooms: [
+                {
+                    id: 201,
+                    roomNumber: 'Daire 1',
+                    tenantName: 'Ahmet Yılmaz',
+                    rentAmount: 6500,
+                    startDate: '2025-01-15',
+                    paymentDay: '15',
+                    monthsData: generateAllMonthsList(6500, 'Ahmet Yılmaz')
+                }
+            ],
+            expenses: []
+        },
+        'Sena Apart': {
+            rooms: [
+                {
+                    id: 301,
+                    roomNumber: 'Daire 1',
+                    tenantName: 'Ayşe Demir',
+                    rentAmount: 6000,
+                    startDate: '2025-03-10',
+                    paymentDay: '10',
+                    monthsData: generateAllMonthsList(6000, 'Ayşe Demir')
+                }
+            ],
+            expenses: []
+        },
+        'Berat Apart': {
+            rooms: [
+                {
+                    id: 401,
+                    roomNumber: 'Daire 1',
+                    tenantName: 'Ali Kaya',
+                    rentAmount: 7500,
+                    startDate: '2025-06-01',
+                    paymentDay: '1',
+                    monthsData: generateAllMonthsList(7500, 'Ali Kaya')
+                }
+            ],
+            expenses: []
+        }
+    };
+
+    let db = JSON.parse(localStorage.getItem('paslanmazApartmentDataV18')) || initialDefaultData;
     let readReminders = JSON.parse(localStorage.getItem('paslanmazReadRemindersV18')) || [];
     let selectedYearsState = {};
 
-    async function loadDataFromSupabase() {
-        try {
-            const { data, error } = await supabaseClient.from('app_state').select('*').eq('id', 1).single();
-            if (error && error.code !== 'PGRST116') {
-                console.error("Bulut veri çekme hatası:", error);
-            }
-            if (data && data.payload) {
-                db = data.payload;
-            } else {
-                db = JSON.parse(localStorage.getItem('paslanmazApartmentDataV18')) || {};
-            }
-        } catch (e) {
-            db = JSON.parse(localStorage.getItem('paslanmazApartmentDataV18')) || {};
-        }
+    for(let apt in db) {
+        if(!db[apt].rooms) db[apt].rooms = [];
+        if(!db[apt].expenses) db[apt].expenses = [];
 
-        if (Object.keys(db).length === 0) {
-            db = { 'Paslanmaz Apart': { rooms: [], expenses: [] } };
-        }
-        
-        if(!db[currentApartment]) {
-            currentApartment = Object.keys(db)[0] || 'Paslanmaz Apart';
-        }
-        updateAllViews();
+        db[apt].rooms.forEach(room => {
+            if(!room.monthsData) {
+                room.monthsData = generateAllMonthsList(room.rentAmount, room.tenantName);
+            }
+        });
     }
 
-    async function saveAndRender(refreshDropdown = true) {
-        localStorage.setItem('paslanmazApartmentDataV18', JSON.stringify(db));
-        
-        try {
-            await supabaseClient.from('app_state').upsert({ id: 1, payload: db });
-        } catch (e) {
-            console.error("Buluta kaydetme hatası:", e);
-        }
-
-        checkReminders();
-        if(refreshDropdown) {
-            updateAllViews();
-        }
+    if(!db[currentApartment]) {
+        currentApartment = Object.keys(db)[0] || 'Paslanmaz Apart';
     }
 
     function handleLogin() {
@@ -464,7 +524,8 @@
             document.getElementById('loginOverlay').style.display = 'none';
             document.getElementById('mainAppContainer').style.display = 'block';
             errorDiv.style.display = 'none';
-            loadDataFromSupabase();
+            checkReminders();
+            updateAllViews();
         } else {
             errorDiv.style.display = 'block';
         }
@@ -482,13 +543,25 @@
         const nameInput = document.getElementById('newApartmentNameInput');
         const aptName = nameInput.value.trim();
 
-        if(!aptName) { alert('Lütfen bir apartman adı yazın!'); return; }
-        if(db[aptName]) { alert('Bu isimde bir apartman zaten mevcut!'); return; }
+        if(!aptName) {
+            alert('Lütfen bir apartman adı yazın!');
+            return;
+        }
 
-        db[aptName] = { rooms: [], expenses: [] };
+        if(db[aptName]) {
+            alert('Bu isimde bir apartman zaten mevcut!');
+            return;
+        }
+
+        db[aptName] = {
+            rooms: [],
+            expenses: []
+        };
+
         currentApartment = aptName;
         nameInput.value = '';
         saveAndRender();
+        alert(`"${aptName}" başarıyla eklendi ve seçildi!`);
     }
 
     function switchApartment(apartmentName) {
@@ -506,7 +579,8 @@
         const paymentDay = document.getElementById('paymentDay').value;
 
         if(!roomNumber || !tenantName || !rentAmount || !startDate) {
-            alert('Lütfen tüm alanları doldurun!'); return;
+            alert('Lütfen tüm alanları doldurun!');
+            return;
         }
 
         const newRoom = {
@@ -526,6 +600,9 @@
         document.getElementById('tenantName').value = '';
         document.getElementById('rentAmount').value = '';
         document.getElementById('startDate').value = '';
+        
+        document.getElementById('selectedTenantSelect').value = newRoom.id;
+        renderTenantDetails();
     }
 
     function toggleMonthPayment(roomId, monthKey) {
@@ -548,9 +625,11 @@
 
     function deleteSpecificMonth(roomId, monthKey) {
         const room = db[currentApartment].rooms.find(r => r.id === roomId);
-        if(room && room.monthsData[monthKey] && confirm(`${monthKey} dönemini silmek istiyor musunuz?`)) {
-            delete room.monthsData[monthKey];
-            saveAndRender();
+        if(room && room.monthsData[monthKey]) {
+            if(confirm(`${monthKey} dönemini tablodan tamamen silmek istediğinize emin misiniz?`)) {
+                delete room.monthsData[monthKey];
+                saveAndRender();
+            }
         }
     }
 
@@ -559,49 +638,86 @@
         const yearInput = document.getElementById(`addMonthYear_${roomId}`).value.trim();
 
         if(!yearInput || yearInput.length !== 4) {
-            alert('Lütfen geçerli bir yıl girin!'); return;
+            alert('Lütfen geçerli 4 haneli bir yıl yazın (Örn: 2026)!');
+            return;
         }
 
         const key = `${monthSelect} ${yearInput}`;
         const room = db[currentApartment].rooms.find(r => r.id === roomId);
-        if(room && !room.monthsData[key]) {
-            room.monthsData[key] = { tenant: room.tenantName, amount: room.rentAmount, paid: false, note: '', by: '-' };
-            saveAndRender();
+        if(!room) return;
+
+        if(room.monthsData[key]) {
+            alert('Bu ay ve yıl zaten tabloda mevcut!');
+            return;
         }
+
+        room.monthsData[key] = {
+            tenant: room.tenantName,
+            amount: room.rentAmount,
+            paid: false,
+            note: '',
+            by: '-'
+        };
+
+        saveAndRender();
     }
 
     function applyRentIncrease(roomId) {
-        const newAmount = Number(document.getElementById(`newRentAmount_${roomId}`).value);
-        const startMonthKey = document.getElementById(`startRentMonth_${roomId}`).value;
+        const newAmountInput = document.getElementById(`newRentAmount_${roomId}`);
+        const startMonthSelect = document.getElementById(`startRentMonth_${roomId}`);
+        
+        const newAmount = Number(newAmountInput.value);
+        const startMonthKey = startMonthSelect.value;
 
-        if(!newAmount || newAmount <= 0) { alert('Geçerli tutar girin!'); return; }
+        if(!newAmount || newAmount <= 0) {
+            alert('Lütfen geçerli bir yeni kira tutarı girin!');
+            return;
+        }
 
         const room = db[currentApartment].rooms.find(r => r.id === roomId);
         if(!room) return;
 
         let apply = false;
-        Object.keys(room.monthsData).forEach(k => {
-            if(k === startMonthKey) apply = true;
-            if(apply) room.monthsData[k].amount = newAmount;
+        let keys = Object.keys(room.monthsData);
+
+        keys.forEach(k => {
+            if(k === startMonthKey) {
+                apply = true;
+            }
+            if(apply) {
+                room.monthsData[k].amount = newAmount;
+            }
         });
 
         room.rentAmount = newAmount;
         saveAndRender();
+        alert(`Kira zammı başarıyla uygulandı! ${startMonthKey} ve sonraki tüm aylar ${newAmount.toLocaleString('tr-TR')} ₺ olarak güncellendi.`);
     }
 
     function changeTenant(roomId) {
-        const newTenantName = document.getElementById(`newTenantName_${roomId}`).value.trim();
-        const newAmount = Number(document.getElementById(`newTenantAmount_${roomId}`).value);
-        const startMonthKey = document.getElementById(`startTenantMonth_${roomId}`).value;
+        const newTenantInput = document.getElementById(`newTenantName_${roomId}`);
+        const newTenantAmountInput = document.getElementById(`newTenantAmount_${roomId}`);
+        const startMonthSelect = document.getElementById(`startTenantMonth_${roomId}`);
 
-        if(!newTenantName || !newAmount) { alert('Alanları eksiksiz doldurun!'); return; }
+        const newTenantName = newTenantInput.value.trim();
+        const newAmount = Number(newTenantAmountInput.value);
+        const startMonthKey = startMonthSelect.value;
+
+        if(!newTenantName || !newAmount || newAmount <= 0) {
+            alert('Lütfen yeni kiracı adını ve yeni kira tutarını eksiksiz girin!');
+            return;
+        }
 
         const room = db[currentApartment].rooms.find(r => r.id === roomId);
         if(!room) return;
 
         let apply = false;
-        Object.keys(room.monthsData).forEach(k => {
-            if(k === startMonthKey) apply = true;
+        let keys = Object.keys(room.monthsData);
+
+        keys.forEach(k => {
+            if(k === startMonthKey) {
+                apply = true;
+            }
             if(apply) {
                 room.monthsData[k].tenant = newTenantName;
                 room.monthsData[k].amount = newAmount;
@@ -614,11 +730,15 @@
         room.tenantName = newTenantName;
         room.rentAmount = newAmount;
         saveAndRender();
+        alert(`Kiracı başarıyla değiştirildi! ${startMonthKey} ve sonraki aylar yeni kiracı (${newTenantName}) adına kaydedildi.`);
     }
 
     function deleteSelectedRoom() {
-        const roomId = Number(document.getElementById('selectedTenantSelect').value);
-        if(roomId && confirm('Bu daireyi ve geçmiş verileri silmek istediğinize emin misiniz?')) {
+        const selectElem = document.getElementById('selectedTenantSelect');
+        const roomId = Number(selectElem.value);
+        if(!roomId) return;
+
+        if(confirm('Bu daireyi ve tüm kira geçmişini silmek istediğinize emin misiniz?')) {
             db[currentApartment].rooms = db[currentApartment].rooms.filter(r => r.id !== roomId);
             saveAndRender();
         }
@@ -629,9 +749,20 @@
         const amount = document.getElementById('expenseAmount').value.trim();
         const date = document.getElementById('expenseDate').value;
 
-        if(!desc || !amount || !date) { alert('Gider alanlarını doldurun!'); return; }
+        if(!desc || !amount || !date) {
+            alert('Lütfen tüm gider alanlarını doldurun!');
+            return;
+        }
 
-        db[currentApartment].expenses.push({ id: Date.now(), desc, amount, date, addedBy: activeUser });
+        const newExpense = {
+            id: Date.now(),
+            desc,
+            amount,
+            date,
+            addedBy: activeUser
+        };
+
+        db[currentApartment].expenses.push(newExpense);
         saveAndRender();
 
         document.getElementById('expenseDesc').value = '';
@@ -644,6 +775,24 @@
         saveAndRender();
     }
 
+    function toggleReminder(reminderId) {
+        if(readReminders.includes(reminderId)) {
+            readReminders = readReminders.filter(id => id !== reminderId);
+        } else {
+            readReminders.push(reminderId);
+        }
+        localStorage.setItem('paslanmazReadRemindersV18', JSON.stringify(readReminders));
+        checkReminders();
+    }
+
+    function saveAndRender(refreshDropdown = true) {
+        localStorage.setItem('paslanmazApartmentDataV18', JSON.stringify(db));
+        checkReminders();
+        if(refreshDropdown) {
+            updateAllViews();
+        }
+    }
+
     function updateAllViews() {
         renderApartmentTabs();
         updateTenantDropdown();
@@ -653,6 +802,7 @@
     function renderApartmentTabs() {
         const tabsContainer = document.getElementById('apartmentTabs');
         tabsContainer.innerHTML = '';
+
         for(let apt in db) {
             const btn = document.createElement('button');
             btn.className = `tab-btn ${apt === currentApartment ? 'active' : ''}`;
@@ -662,12 +812,77 @@
         }
     }
 
+    function checkReminders() {
+        const container = document.getElementById('reminderContainer');
+        const today = new Date();
+        const currentDay = today.getDate();
+
+        let allReminders = [];
+
+        for(let apt in db) {
+            db[apt].rooms.forEach(room => {
+                if(!room.startDate) return;
+
+                const payDay = Number(room.paymentDay);
+                let diffDays = payDay - currentDay;
+                if(diffDays === 0) {
+                    allReminders.push({
+                        id: `${room.id}-rent-today`,
+                        type: 'rent',
+                        text: `<b>${apt} - ${room.roomNumber} (${room.tenantName})</b>: Bugün kira ödeme günü!`
+                    });
+                } else if(diffDays > 0 && diffDays <= 3) {
+                    allReminders.push({
+                        id: `${room.id}-rent-${payDay}`,
+                        type: 'rent',
+                        text: `<b>${apt} - ${room.roomNumber} (${room.tenantName})</b>: Kira gününe ${diffDays} gün kaldı.`
+                    });
+                }
+
+                const start = new Date(room.startDate);
+                if(start.getDate() === today.getDate() && start.getMonth() === today.getMonth()) {
+                    const yearsPassed = today.getFullYear() - start.getFullYear();
+                    if(yearsPassed > 0) {
+                        allReminders.push({
+                            id: `${room.id}-raise-${yearsPassed}`,
+                            type: 'raise',
+                            text: `<b>${apt} - ${room.roomNumber} (${room.tenantName})</b>: Tam ${yearsPassed}. yıl dönümü, zam günü geldi!`
+                        });
+                    }
+                }
+            });
+        }
+
+        if(allReminders.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        let html = `<div class="alert-box">`;
+        html += `<h4>🔔 Sistem Hatırlatıcıları <small style="font-weight:normal; font-size:0.75rem; color:#64748b;">(Okundu işaretlemek için satıra tıklayın)</small></h4>`;
+
+        allReminders.forEach(item => {
+            let isRead = readReminders.includes(item.id);
+            let readClass = isRead ? 'read' : '';
+            let prefix = item.type === 'raise' ? '📈 Zam: ' : '💰 Kira: ';
+            
+            html += `
+                <div class="reminder-row ${readClass}" onclick="toggleReminder('${item.id}')">
+                    <span>${prefix}${item.text}</span>
+                </div>
+            `;
+        });
+
+        html += `</div>`;
+        container.innerHTML = html;
+    }
+
     function updateTenantDropdown() {
         const selectElem = document.getElementById('selectedTenantSelect');
         const currentSelectedVal = selectElem.value;
         selectElem.innerHTML = '';
 
-        const rooms = (db[currentApartment] && db[currentApartment].rooms) || [];
+        const rooms = db[currentApartment].rooms;
 
         if(rooms.length === 0) {
             selectElem.innerHTML = `<option value="">Kayıtlı daire bulunmuyor</option>`;
@@ -677,6 +892,7 @@
         }
 
         document.getElementById('deleteTenantBtn').style.display = 'inline-block';
+
         rooms.forEach(room => {
             const option = document.createElement('option');
             option.value = room.id;
@@ -687,59 +903,108 @@
         if(rooms.some(r => r.id == currentSelectedVal)) {
             selectElem.value = currentSelectedVal;
         }
+
         renderTenantDetails();
     }
 
     function renderTenantDetails() {
         const container = document.getElementById('tenantDetailContainer');
-        const selectedId = Number(document.getElementById('selectedTenantSelect').value);
-        const room = db[currentApartment] && db[currentApartment].rooms.find(r => r.id === selectedId);
+        const selectElem = document.getElementById('selectedTenantSelect');
+        const selectedId = Number(selectElem.value);
+
+        const room = db[currentApartment].rooms.find(r => r.id === selectedId);
 
         if(!room) {
-            container.innerHTML = `<p style="text-align:center; color:#64748b;">Görüntülemek için bir daire seçin.</p>`;
+            container.innerHTML = `<p style="text-align:center; color:#64748b;">Lütfen kontrol etmek için yukarıdan bir kiracı seçin.</p>`;
             return;
         }
 
         let allKeys = Object.keys(room.monthsData);
-        let availableYears = [...new Set(allKeys.map(k => k.split(' ')[1]))].sort();
-        let currentSelectedYear = selectedYearsState[room.id] || (availableYears.includes('2026') ? '2026' : availableYears[0]);
 
-        let yearOptionsHtml = availableYears.map(y => `<option value="${y}" ${y === currentSelectedYear ? 'selected' : ''}>${y} Yılı</option>`).join('');
-        let optionsHtml = allKeys.map(k => `<option value="${k}">${k}</option>`).join('');
-        let monthSelectOptions = monthNames.map(m => `<option value="${m}">${m}</option>`).join('');
+        let availableYears = [];
+        allKeys.forEach(k => {
+            let parts = k.split(' ');
+            if(parts.length === 2) {
+                let yr = parts[1];
+                if(!availableYears.includes(yr)) availableYears.push(yr);
+            }
+        });
+        availableYears.sort();
+
+        let currentSelectedYear = selectedYearsState[room.id] || (availableYears.includes('2026') ? '2026' : availableYears[0]);
+        if(!availableYears.includes(currentSelectedYear) && availableYears.length > 0) {
+            currentSelectedYear = availableYears[0];
+        }
 
         let filteredKeys = allKeys.filter(k => k.includes(currentSelectedYear));
 
+        let yearOptionsHtml = '';
+        availableYears.forEach(y => {
+            yearOptionsHtml += `<option value="${y}" ${y === currentSelectedYear ? 'selected' : ''}>${y} Yılı</option>`;
+        });
+
+        let optionsHtml = '';
+        allKeys.forEach(k => {
+            optionsHtml += `<option value="${k}">${k}</option>`;
+        });
+
+        let monthSelectOptions = '';
+        monthNames.forEach(m => {
+            monthSelectOptions += `<option value="${m}">${m}</option>`;
+        });
+
         let tableHtml = `
             <div style="margin-bottom: 15px; display:flex; flex-direction:column; gap:10px;">
-                <div style="background: #f8fafc; padding: 12px; border-radius: 6px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
-                    <div>Daire: <b>${room.roomNumber}</b> | Kiracı: <b>${room.tenantName}</b> | Kira: <b>${Number(room.rentAmount).toLocaleString('tr-TR')} ₺</b></div>
+                <div style="background: #f8fafc; padding: 12px; border-radius: 6px; font-size: 0.9rem; line-height: 1.5; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                     <div>
-                        <select onchange="selectedYearsState[${room.id}] = this.value; renderTenantDetails();">
+                        Daire: <b>${room.roomNumber}</b> | Mevcut Kiracı: <b>${room.tenantName}</b><br>
+                        Son Kira: <b>${Number(room.rentAmount).toLocaleString('tr-TR')} ₺</b> | Oturma Tarihi: <b>${room.startDate || 'Belirtilmemiş'}</b>
+                    </div>
+                    <!-- Yıl Seçim Filtresi -->
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <label style="font-weight:bold; font-size:0.85rem;">Görüntülenen Yıl:</label>
+                        <select id="filterYear_${room.id}" onchange="changeFilterYear(${room.id}, this.value)" style="padding:6px; font-size:0.85rem; width:120px;">
                             ${yearOptionsHtml}
                         </select>
                     </div>
                 </div>
 
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <div style="flex: 1; background: #eff6ff; padding: 10px; border-radius: 6px;">
-                        <h5 style="margin: 0 0 8px 0; color: #1e40af;">📈 Kira Zammı</h5>
-                        <div style="display: flex; gap: 5px;">
-                            <input type="number" id="newRentAmount_${room.id}" placeholder="Yeni Tutar">
-                            <select id="startRentMonth_${room.id}">${optionsHtml}</select>
-                            <button class="btn" onclick="applyRentIncrease(${room.id})">Uygula</button>
+                <!-- İşlem Panelleri -->
+                <div style="display:flex; gap:15px; flex-wrap:wrap;">
+                    <!-- Zam Paneli -->
+                    <div style="background: #e2e8f0; padding: 10px; border-radius: 6px; flex:1; min-width:280px;">
+                        <span style="font-size:0.85rem; font-weight:bold; display:block; margin-bottom:5px;">📈 Kira Zammı Yap:</span>
+                        <div style="display:flex; gap:6px;">
+                            <input type="number" id="newRentAmount_${room.id}" placeholder="Yeni Tutar (TL)" style="padding:6px; font-size:0.85rem;">
+                            <select id="startRentMonth_${room.id}" style="padding:6px; font-size:0.85rem;">
+                                ${optionsHtml}
+                            </select>
+                            <button class="btn" style="padding:6px 12px; font-size:0.85rem;" onclick="applyRentIncrease(${room.id})">Uygula</button>
                         </div>
                     </div>
 
-                    <div style="flex: 1; background: #fef2f2; padding: 10px; border-radius: 6px;">
-                        <h5 style="margin: 0 0 8px 0; color: #991b1b;">🔄 Kiracı Değiştir</h5>
-                        <div style="display: flex; gap: 5px; flex-direction: column;">
-                            <input type="text" id="newTenantName_${room.id}" placeholder="Yeni Kiracı">
-                            <input type="number" id="newTenantAmount_${room.id}" placeholder="Yeni Kira">
-                            <select id="startTenantMonth_${room.id}">${optionsHtml}</select>
-                            <button class="btn" onclick="changeTenant(${room.id})" style="background: #dc2626;">Değiştir</button>
+                    <!-- Kiracı Değiştir Paneli -->
+                    <div style="background: #e0f2fe; padding: 10px; border-radius: 6px; flex:1; min-width:320px;">
+                        <span style="font-size:0.85rem; font-weight:bold; display:block; margin-bottom:5px; color:#0369a1;">👤 Kiracı Değiştir:</span>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <input type="text" id="newTenantName_${room.id}" placeholder="Yeni Kiracı Adı" style="padding:6px; font-size:0.85rem; flex:1; min-width:110px;">
+                            <input type="number" id="newTenantAmount_${room.id}" placeholder="Yeni Kira (TL)" style="padding:6px; font-size:0.85rem; width:100px;">
+                            <select id="startTenantMonth_${room.id}" style="padding:6px; font-size:0.85rem; width:110px;">
+                                ${optionsHtml}
+                            </select>
+                            <button class="btn" style="background:#0284c7; padding:6px 12px; font-size:0.85rem;" onclick="changeTenant(${room.id})">Değiştir</button>
                         </div>
                     </div>
+                </div>
+
+                <!-- Ay Ekleme Paneli -->
+                <div style="background: #f1f5f9; padding: 8px 12px; border-radius: 6px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <span style="font-size:0.85rem; font-weight:bold;">➕ Listeye Özel Ay Ekle:</span>
+                    <select id="addMonthName_${room.id}" style="padding:5px; font-size:0.85rem; width:110px;">
+                        ${monthSelectOptions}
+                    </select>
+                    <input type="text" id="addMonthYear_${room.id}" placeholder="Yıl (Örn: 2026)" value="${currentSelectedYear}" style="padding:5px; font-size:0.85rem; width:100px;">
+                    <button class="btn" style="background:#475569; padding:5px 12px; font-size:0.85rem;" onclick="addNewMonthToRoom(${room.id})">Ay Ekle</button>
                 </div>
             </div>
 
@@ -747,66 +1012,69 @@
                 <thead>
                     <tr>
                         <th>Ay / Yıl</th>
-                        <th>Kiracı</th>
-                        <th>Tutar</th>
-                        <th>Durum</th>
-                        <th>İşlem Yapan</th>
-                        <th>Not</th>
-                        <th>Sil</th>
+                        <th>Kiracı Adı</th>
+                        <th>Kira Tutarı</th>
+                        <th>Ödeme Durumu</th>
+                        <th>Aylık Not</th>
+                        <th>İşlemi Yapan</th>
+                        <th>İşlem</th>
                     </tr>
                 </thead>
                 <tbody>
         `;
 
-        filteredKeys.forEach(k => {
-            const data = room.monthsData[k];
-            tableHtml += `
-                <tr>
-                    <td><b>${k}</b></td>
-                    <td>${data.tenant}</td>
-                    <td>${Number(data.amount).toLocaleString('tr-TR')} ₺</td>
-                    <td>
-                        <button onclick="toggleMonthPayment(${room.id}, '${k}')" style="background: ${data.paid ? '#16a34a' : '#dc2626'}; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
-                            ${data.paid ? 'Ödendi' : 'Ödenmedi'}
-                        </button>
-                    </td>
-                    <td><span class="badge">${data.by || '-'}</span></td>
-                    <td><input type="text" class="note-input" value="${data.note || ''}" onchange="updateMonthNote(${room.id}, '${k}', this.value)"></td>
-                    <td><button onclick="deleteSpecificMonth(${room.id}, '${k}')" style="color:#dc2626; border:none; background:none; cursor:pointer;">✕</button></td>
-                </tr>
-            `;
-        });
+        if(filteredKeys.length === 0) {
+            tableHtml += `<tr><td colspan="7" style="text-align:center; color:#64748b;">Bu yıla ait kayıtlı ay bulunmuyor. Yukarıdan "Ay Ekle" butonunu kullanarak ekleyebilirsiniz.</td></tr>`;
+        } else {
+            filteredKeys.forEach(mKey => {
+                const monthInfo = room.monthsData[mKey];
+                tableHtml += `
+                    <tr>
+                        <td><b>${mKey}</b></td>
+                        <td><span style="color: var(--primary-color); font-weight: 600;">${monthInfo.tenant}</span></td>
+                        <td>${Number(monthInfo.amount).toLocaleString('tr-TR')} ₺</td>
+                        <td>
+                            <button class="btn" style="background: ${monthInfo.paid ? '#16a34a' : '#f59e0b'}; padding: 6px 14px; font-size: 0.85rem;" onclick="toggleMonthPayment(${room.id}, '${mKey}')">
+                                ${monthInfo.paid ? 'Ödendi' : 'Ödenmedi'}
+                            </button>
+                        </td>
+                        <td>
+                            <input type="text" class="note-input" value="${monthInfo.note || ''}" placeholder="Not ekle..." oninput="updateMonthNote(${room.id}, '${mKey}', this.value)">
+                        </td>
+                        <td><span class="badge">${monthInfo.by}</span></td>
+                        <td>
+                            <button class="btn-danger" style="padding: 4px 8px; font-size:0.75rem;" onclick="deleteSpecificMonth(${room.id}, '${mKey}')">Sil</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
 
-        tableHtml += `
-                </tbody>
-            </table>
-
-            <div style="margin-top: 15px; background: #f1f5f9; padding: 10px; border-radius: 6px; display: flex; gap: 10px; align-items: center;">
-                <b>➕ Manuel Ay Ekle:</b>
-                <select id="addMonthName_${room.id}">${monthSelectOptions}</select>
-                <input type="text" id="addMonthYear_${room.id}" placeholder="Yıl (Örn: 2026)" style="width: 100px;">
-                <button class="btn" onclick="addNewMonthToRoom(${room.id})">Ekle</button>
-            </div>
-        `;
-
+        tableHtml += `</tbody></table>`;
         container.innerHTML = tableHtml;
+    }
+
+    function changeFilterYear(roomId, yearVal) {
+        selectedYearsState[roomId] = yearVal;
+        renderTenantDetails();
     }
 
     function renderExpenses() {
         const tbody = document.getElementById('expenseTableBody');
         tbody.innerHTML = '';
-        const expenses = (db[currentApartment] && db[currentApartment].expenses) || [];
 
-        if (expenses.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#64748b;">Kayıtlı gider yok.</td></tr>`;
+        const expenses = db[currentApartment].expenses;
+
+        if(expenses.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#64748b;">Bu apartmanda henüz kayıtlı gider bulunmuyor.</td></tr>`;
             return;
         }
 
         expenses.forEach(exp => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${exp.desc}</td>
-                <td><b>${Number(exp.amount).toLocaleString('tr-TR')} ₺</b></td>
+                <td><b>${exp.desc}</b></td>
+                <td>${Number(exp.amount).toLocaleString('tr-TR')} ₺</td>
                 <td>${exp.date}</td>
                 <td><span class="badge">${exp.addedBy}</span></td>
                 <td><button class="btn-danger" onclick="deleteExpense(${exp.id})">Sil</button></td>
@@ -814,32 +1082,7 @@
             tbody.appendChild(tr);
         });
     }
-
-    function checkReminders() {
-        const container = document.getElementById('reminderContainer');
-        const today = new Date();
-        let allReminders = [];
-
-        for(let apt in db) {
-            db[apt].rooms.forEach(room => {
-                if(!room.startDate) return;
-                const payDay = Number(room.paymentDay);
-                let diffDays = payDay - today.getDate();
-                if(diffDays === 0) {
-                    allReminders.push({ id: `${room.id}-rent-today`, type: 'rent', text: `<b>${apt} - ${room.roomNumber} (${room.tenantName})</b>: Bugün kira günü!` });
-                }
-            });
-        }
-
-        if(allReminders.length === 0) { container.innerHTML = ''; return; }
-
-        let html = `<div class="alert-box"><h4>🔔 Hatırlatıcılar</h4>`;
-        allReminders.forEach(item => {
-            html += `<div class="reminder-row"><span>${item.text}</span></div>`;
-        });
-        html += `</div>`;
-        container.innerHTML = html;
-    }
 </script>
+
 </body>
 </html>
