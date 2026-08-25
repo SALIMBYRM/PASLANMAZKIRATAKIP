@@ -1,6 +1,3 @@
-
-
-
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -905,6 +902,11 @@
         renderTenantDetails();
     }
 
+    function changeYearView(roomId, year) {
+        selectedYearsState[roomId] = year;
+        renderTenantDetails();
+    }
+
     function renderTenantDetails() {
         const container = document.getElementById('tenantDetailContainer');
         const selectElem = document.getElementById('selectedTenantSelect');
@@ -951,120 +953,117 @@
             monthSelectOptions += `<option value="${m}">${m}</option>`;
         });
 
-        let tableHtml = `
+        let tableRowsHtml = '';
+        filteredKeys.forEach(k => {
+            let data = room.monthsData[k];
+            let isPaid = data.paid;
+            let statusBadge = isPaid 
+                ? `<span style="background:#dcfce7; color:#15803d; padding:4px 8px; border-radius:4px; font-weight:bold;">Ödendi</span>` 
+                : `<span style="background:#fee2e2; color:#b91c1c; padding:4px 8px; border-radius:4px; font-weight:bold;">Ödenmedi</span>`;
+            
+            tableRowsHtml += `
+                <tr>
+                    <td><b>${k}</b></td>
+                    <td>${data.tenant}</td>
+                    <td>${Number(data.amount).toLocaleString('tr-TR')} ₺</td>
+                    <td>${statusBadge}</td>
+                    <td>${data.by || '-'}</td>
+                    <td>
+                        <input type="text" class="note-input" value="${data.note || ''}" placeholder="Not ekle..." onchange="updateMonthNote(${room.id}, '${k}', this.value)">
+                    </td>
+                    <td>
+                        <button class="btn" style="padding:4px 8px; font-size:0.8rem; background:${isPaid ? '#eab308' : '#16a34a'};" onclick="toggleMonthPayment(${room.id}, '${k}')">
+                            ${isPaid ? 'Ödenmedi Yap' : 'Ödendi Yap'}
+                        </button>
+                        <button class="btn-danger" style="padding:4px 8px; font-size:0.8rem;" onclick="deleteSpecificMonth(${room.id}, '${k}')">Sil</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        let html = `
             <div style="margin-bottom: 15px; display:flex; flex-direction:column; gap:10px;">
                 <div style="background: #f8fafc; padding: 12px; border-radius: 6px; font-size: 0.9rem; line-height: 1.5; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                     <div>
                         Daire: <b>${room.roomNumber}</b> | Mevcut Kiracı: <b>${room.tenantName}</b><br>
-                        Son Kira: <b>${Number(room.rentAmount).toLocaleString('tr-TR')} ₺</b> | Oturma Tarihi: <b>${room.startDate || 'Belirtilmemiş'}</b>
+                        Giriş Tarihi: <b>${room.startDate}</b> | Ödeme Günü: <b>Her ayın ${room.paymentDay}. günü</b>
                     </div>
-                    <!-- Yıl Seçim Filtresi -->
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <label style="font-weight:bold; font-size:0.85rem;">Görüntülenen Yıl:</label>
-                        <select id="filterYear_${room.id}" onchange="changeFilterYear(${room.id}, this.value)" style="padding:6px; font-size:0.85rem; width:120px;">
+                    <div>
+                        <label style="font-weight:bold; margin-right:5px;">Yıl Filtrele:</label>
+                        <select style="width:auto; padding:6px;" onchange="changeYearView(${room.id}, this.value)">
                             ${yearOptionsHtml}
                         </select>
                     </div>
                 </div>
 
                 <!-- İşlem Panelleri -->
-                <div style="display:flex; gap:15px; flex-wrap:wrap;">
-                    <!-- Zam Paneli -->
-                    <div style="background: #e2e8f0; padding: 10px; border-radius: 6px; flex:1; min-width:280px;">
-                        <span style="font-size:0.85rem; font-weight:bold; display:block; margin-bottom:5px;">📈 Kira Zammı Yap:</span>
-                        <div style="display:flex; gap:6px;">
-                            <input type="number" id="newRentAmount_${room.id}" placeholder="Yeni Tutar (TL)" style="padding:6px; font-size:0.85rem;">
-                            <select id="startRentMonth_${room.id}" style="padding:6px; font-size:0.85rem;">
-                                ${optionsHtml}
-                            </select>
-                            <button class="btn" style="padding:6px 12px; font-size:0.85rem;" onclick="applyRentIncrease(${room.id})">Uygula</button>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <!-- Zam Uygula -->
+                    <div style="flex:1; min-width:260px; background:#f1f5f9; padding:10px; border-radius:6px; border:1px solid #e2e8f0;">
+                        <h4 style="margin:0 0 8px 0; font-size:0.85rem; color:#1e3a8a;">📈 Kira Zammı Uygula</h4>
+                        <div style="display:flex; gap:5px;">
+                            <input type="number" id="newRentAmount_${room.id}" placeholder="Yeni Tutar (TL)" style="padding:6px; font-size:0.8rem;">
+                            <select id="startRentMonth_${room.id}" style="padding:6px; font-size:0.8rem;">${optionsHtml}</select>
+                            <button class="btn" style="padding:6px 10px; font-size:0.8rem;" onclick="applyRentIncrease(${room.id})">Uygula</button>
                         </div>
                     </div>
 
-                    <!-- Kiracı Değiştir Paneli -->
-                    <div style="background: #e0f2fe; padding: 10px; border-radius: 6px; flex:1; min-width:320px;">
-                        <span style="font-size:0.85rem; font-weight:bold; display:block; margin-bottom:5px; color:#0369a1;">👤 Kiracı Değiştir:</span>
-                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                            <input type="text" id="newTenantName_${room.id}" placeholder="Yeni Kiracı Adı" style="padding:6px; font-size:0.85rem; flex:1; min-width:110px;">
-                            <input type="number" id="newTenantAmount_${room.id}" placeholder="Yeni Kira (TL)" style="padding:6px; font-size:0.85rem; width:100px;">
-                            <select id="startTenantMonth_${room.id}" style="padding:6px; font-size:0.85rem; width:110px;">
-                                ${optionsHtml}
-                            </select>
-                            <button class="btn" style="background:#0284c7; padding:6px 12px; font-size:0.85rem;" onclick="changeTenant(${room.id})">Değiştir</button>
+                    <!-- Kiracı Değiştir -->
+                    <div style="flex:1; min-width:260px; background:#f1f5f9; padding:10px; border-radius:6px; border:1px solid #e2e8f0;">
+                        <h4 style="margin:0 0 8px 0; font-size:0.85rem; color:#1e3a8a;">👤 Kiracı Değiştir</h4>
+                        <div style="display:flex; gap:5px; flex-direction:column;">
+                            <div style="display:flex; gap:5px;">
+                                <input type="text" id="newTenantName_${room.id}" placeholder="Yeni Kiracı Adı" style="padding:6px; font-size:0.8rem;">
+                                <input type="number" id="newTenantAmount_${room.id}" placeholder="Yeni Kira (TL)" style="padding:6px; font-size:0.8rem;">
+                            </div>
+                            <div style="display:flex; gap:5px;">
+                                <select id="startTenantMonth_${room.id}" style="padding:6px; font-size:0.8rem;">${optionsHtml}</select>
+                                <button class="btn" style="padding:6px 10px; font-size:0.8rem; background:#0284c7;" onclick="changeTenant(${room.id})">Değiştir</button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Ay Ekleme Paneli -->
-                <div style="background: #f1f5f9; padding: 8px 12px; border-radius: 6px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                    <span style="font-size:0.85rem; font-weight:bold;">➕ Listeye Özel Ay Ekle:</span>
-                    <select id="addMonthName_${room.id}" style="padding:5px; font-size:0.85rem; width:110px;">
-                        ${monthSelectOptions}
-                    </select>
-                    <input type="text" id="addMonthYear_${room.id}" placeholder="Yıl (Örn: 2026)" value="${currentSelectedYear}" style="padding:5px; font-size:0.85rem; width:100px;">
-                    <button class="btn" style="background:#475569; padding:5px 12px; font-size:0.85rem;" onclick="addNewMonthToRoom(${room.id})">Ay Ekle</button>
+                    <!-- Manuel Dönem Ekle -->
+                    <div style="flex:1; min-width:260px; background:#f1f5f9; padding:10px; border-radius:6px; border:1px solid #e2e8f0;">
+                        <h4 style="margin:0 0 8px 0; font-size:0.85rem; color:#1e3a8a;">➕ Manuel Özel Ay Ekle</h4>
+                        <div style="display:flex; gap:5px;">
+                            <select id="addMonthName_${room.id}" style="padding:6px; font-size:0.8rem;">${monthSelectOptions}</select>
+                            <input type="number" id="addMonthYear_${room.id}" placeholder="Yıl (2026)" value="2026" style="padding:6px; font-size:0.8rem;">
+                            <button class="btn" style="padding:6px 10px; font-size:0.8rem; background:#16a34a;" onclick="addNewMonthToRoom(${room.id})">Ekle</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <table>
                 <thead>
                     <tr>
-                        <th>Ay / Yıl</th>
-                        <th>Kiracı Adı</th>
+                        <th>Dönem (Ay/Yıl)</th>
+                        <th>Kiracı</th>
                         <th>Kira Tutarı</th>
-                        <th>Ödeme Durumu</th>
-                        <th>Aylık Not</th>
-                        <th>İşlemi Yapan</th>
-                        <th>İşlem</th>
+                        <th>Durum</th>
+                        <th>İşlem Yapan</th>
+                        <th>Not</th>
+                        <th>İşlemler</th>
                     </tr>
                 </thead>
                 <tbody>
+                    ${tableRowsHtml || '<tr><td colspan="7" style="text-align:center;">Bu yıl için kayıtlı veri bulunmuyor.</td></tr>'}
+                </tbody>
+            </table>
         `;
 
-        if(filteredKeys.length === 0) {
-            tableHtml += `<tr><td colspan="7" style="text-align:center; color:#64748b;">Bu yıla ait kayıtlı ay bulunmuyor. Yukarıdan "Ay Ekle" butonunu kullanarak ekleyebilirsiniz.</td></tr>`;
-        } else {
-            filteredKeys.forEach(mKey => {
-                const monthInfo = room.monthsData[mKey];
-                tableHtml += `
-                    <tr>
-                        <td><b>${mKey}</b></td>
-                        <td><span style="color: var(--primary-color); font-weight: 600;">${monthInfo.tenant}</span></td>
-                        <td>${Number(monthInfo.amount).toLocaleString('tr-TR')} ₺</td>
-                        <td>
-                            <button class="btn" style="background: ${monthInfo.paid ? '#16a34a' : '#f59e0b'}; padding: 6px 14px; font-size: 0.85rem;" onclick="toggleMonthPayment(${room.id}, '${mKey}')">
-                                ${monthInfo.paid ? 'Ödendi' : 'Ödenmedi'}
-                            </button>
-                        </td>
-                        <td>
-                            <input type="text" class="note-input" value="${monthInfo.note || ''}" placeholder="Not ekle..." oninput="updateMonthNote(${room.id}, '${mKey}', this.value)">
-                        </td>
-                        <td><span class="badge">${monthInfo.by}</span></td>
-                        <td>
-                            <button class="btn-danger" style="padding: 4px 8px; font-size:0.75rem;" onclick="deleteSpecificMonth(${room.id}, '${mKey}')">Sil</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        tableHtml += `</tbody></table>`;
-        container.innerHTML = tableHtml;
-    }
-
-    function changeFilterYear(roomId, yearVal) {
-        selectedYearsState[roomId] = yearVal;
-        renderTenantDetails();
+        container.innerHTML = html;
     }
 
     function renderExpenses() {
         const tbody = document.getElementById('expenseTableBody');
         tbody.innerHTML = '';
 
-        const expenses = db[currentApartment].expenses;
+        const expenses = db[currentApartment].expenses || [];
 
         if(expenses.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#64748b;">Bu apartmanda henüz kayıtlı gider bulunmuyor.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#64748b;">Bu apartmana ait henüz gider kaydı bulunmuyor.</td></tr>`;
             return;
         }
 
@@ -1074,13 +1073,12 @@
                 <td><b>${exp.desc}</b></td>
                 <td>${Number(exp.amount).toLocaleString('tr-TR')} ₺</td>
                 <td>${exp.date}</td>
-                <td><span class="badge">${exp.addedBy}</span></td>
+                <td><span class="badge">${exp.addedBy || '-'}</span></td>
                 <td><button class="btn-danger" onclick="deleteExpense(${exp.id})">Sil</button></td>
             `;
             tbody.appendChild(tr);
         });
     }
 </script>
-
 </body>
 </html>
